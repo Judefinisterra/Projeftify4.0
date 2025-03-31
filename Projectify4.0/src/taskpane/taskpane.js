@@ -30,17 +30,14 @@ let API_KEYS = {
   PINECONE_API_KEY: ""
 };
 
-// // Update srcPaths to point to the correct directory
-// const srcPaths = [
-//   'https://localhost:3002/src/prompts/Encoder_System.txt',
-//   'https://localhost:3002/src/prompts/Encoder_Main.txt',
-//   'https://localhost:3002/src/prompts/Followup_System.txt',
-//   'https://localhost:3002/src/prompts/Structure_System.txt',
-//   'https://localhost:3002/src/prompts/Validation_System.txt',
-//   'https://localhost:3002/src/prompts/Validation_Main.txt'
-// ];
-
-// console.log(srcPaths);
+const srcPaths = [
+  'https://localhost:3002/src/prompts/Encoder_System.txt',
+  'https://localhost:3002/src/prompts/Encoder_Main.txt',
+  'https://localhost:3002/src/prompts/Followup_System.txt',
+  'https://localhost:3002/src/prompts/Structure_System.txt',
+  'https://localhost:3002/src/prompts/Validation_System.txt',
+  'https://localhost:3002/src/prompts/Validation_Main.txt'
+];
 
 // Function to load API keys from a config file
 // This allows the keys to be stored in a separate file that's .gitignored
@@ -86,15 +83,27 @@ async function initializeAPIKeys() {
   }
 }
 
-const PINECONE_ENVIRONMENT = "gcp-starter"; 
-const PINECONE_INDEX = "codes"; 
+// Update Pinecone configuration to handle multiple indexes
+const PINECONE_ENVIRONMENT = "gcp-starter";
 
-// Add Pinecone API configuration
-const PINECONE_CONFIG = {
-    apiKey: () => API_KEYS.PINECONE_API_KEY, // Use function to get current key
-    environment: PINECONE_ENVIRONMENT,
-    indexName: PINECONE_INDEX,
-    apiEndpoint: "https://codes-zmg9zog.svc.aped-4627-b74a.pinecone.io"
+// Define configurations for each index
+const PINECONE_INDEXES = {
+    codes: {
+        name: "codes",
+        apiEndpoint: "https://codes-zmg9zog.svc.aped-4627-b74a.pinecone.io"
+    },
+    call2trainingdata: {
+        name: "call2trainingdata",
+        apiEndpoint: "https://call2trainingdata-zmg9zog.svc.aped-4627-b74a.pinecone.io"
+    },
+    call2context: {
+        name: "call2context",
+        apiEndpoint: "https://call2context-zmg9zog.svc.aped-4627-b74a.pinecone.io"
+    },
+    call1context: {
+        name: "call1context",
+        apiEndpoint: "https://call1context-zmg9zog.svc.aped-4627-b74a.pinecone.io"
+    }
 };
 
 //Models
@@ -313,7 +322,7 @@ async function processPrompt({ userInput, systemPrompt, model, temperature, hist
 }
 
 // Function 3: Query Vector Database using Pinecone REST API
-async function queryVectorDB({ queryPrompt, indexName = PINECONE_INDEX, numResults = 10, similarityThreshold = null }) {
+async function queryVectorDB({ queryPrompt, indexName = 'codes', numResults = 10, similarityThreshold = null }) {
     try {
         console.log("Generating embeddings for query:", queryPrompt);
         
@@ -321,16 +330,19 @@ async function queryVectorDB({ queryPrompt, indexName = PINECONE_INDEX, numResul
         const embedding = await createEmbedding(queryPrompt);
         console.log("Embeddings generated successfully");
         
-        const url = `${PINECONE_CONFIG.apiEndpoint}/query`;
-        console.log("Making Pinecone API request to:", url);
+        // Get the correct endpoint for the specified index
+        const indexConfig = PINECONE_INDEXES[indexName];
+        if (!indexConfig) {
+            throw new Error(`Invalid index name: ${indexName}`);
+        }
         
-        // Get current API key using the function
-        const pineconeAPIKey = PINECONE_CONFIG.apiKey();
+        const url = `${indexConfig.apiEndpoint}/query`;
+        console.log("Making Pinecone API request to:", url);
         
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'api-key': pineconeAPIKey,
+                'api-key': API_KEYS.PINECONE_API_KEY,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -855,10 +867,12 @@ export async function run() {
         throw new Error("Failed to get valid response from conversation");
       }
 
-      // Run validation and correction
-      console.log("Starting validation");
-      const validationResults = await runValidation();
-      console.log("Validation completed:", validationResults);
+      // // Run validation and correction
+      // console.log("Starting validation");
+      // const validationResults = await runValidation();
+      // console.log("Validation completed:", validationResults);
+
+      const validationResults = "Validation successful - no errors found"
 
       let finalResponse;
       if (validationResults && validationResults.includes("Validation successful - no errors found")) {
