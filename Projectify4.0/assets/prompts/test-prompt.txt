@@ -1,1 +1,0 @@
-This is a test prompt file used to verify that the prompt loading system is working correctly. 

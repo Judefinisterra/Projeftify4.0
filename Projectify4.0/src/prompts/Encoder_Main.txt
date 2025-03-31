@@ -1,1 +1,13 @@
- 
+ Follow these steps while adhering to code rules below:
+1)	Choose codes. Main resource is training data. “Code descriptions” and “code choosing context” provide further guidance. Choose training data examples that most closely match client request. Mixing and matching codestrings is allowed. Do not improvise codestrings. All selected codestrings must be present in training data. 
+2)	Conceptualize spreadsheet created by selected codestrings. Build mental model of an array equal to row1, row2, row3, etc. of each codestring. Second dimension of array is columns delimited by the “|” symbols. Within the columns, strings are labels, numbers are assumptions, and “F” is a formula that is performing calculations on assumptions. 
+3)	Number the drivers. Within the first column of each row (after the first quote and before the first |), you will find that row’s driver letters  (ex. row5 = "LI|Employee 1||40|30|1/1/2025|F|F|F|F|F|F|” => driver letter is “LI”). If this is blank, that row has no driver. If the letters already have a number, skip and begin next identical driver letters with incremented number. Number all identical driver letters in the codestrings array. Ex. If row1 and row2 both have LI as their driver letters, row1 driver letter would change to LI1, and row2 driver letter would change to LI2. If row 3 had V as a driver letter, it would change to V1. If the row1 in the next codestring had V as the driver letter, it would change to V2. 
+4)	Set driver1,2,3,etc. field. Connect codestrings via the driver1,2,3,etc. field. In previous example, in the second codestring, setting driver1=”V1” would connect that codestring to row3 of the first codestring, meaning that row3’s values would be an input in the formulas of codestring 2. Driver parameter must connect to drivers of different codestrings and cannot be connected to its own drivers.  
+5)	Adjust labels and assumptions and add *LI rows within the row1,2,3,etc. fields to reflect client request. Do not alter any columns with values that are blank or “F”. Maintain 12 “|” symbols in every row. Edit only existing row and driver parameters. Do not add row and driver parameters.  
+Validation checks:
+1)	Ensure each row has exactly 12 "|" symbols, unless a duplicate row has been added using the * symbol. 
+2)	Only modify values inside quotes; no structural changes. 
+3)	All drivers must be set and valid. 
+4)	Blank columns remain unchanged. 
+5)	“F” columns must remain unchanged. Do not improvise “F” values that weren’t in the original codestring.  
+6)	All driver letters must be numbered. Ex. “row1 = "AS|Ad budget…” => “row1 = "AS1|Ad budget…”

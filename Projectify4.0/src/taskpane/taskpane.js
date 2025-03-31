@@ -30,9 +30,17 @@ let API_KEYS = {
   PINECONE_API_KEY: ""
 };
 
-const srcPaths = `https://localhost:3002/src/prompts/Encoder_Main.txt`;
+// // Update srcPaths to point to the correct directory
+// const srcPaths = [
+//   'https://localhost:3002/src/prompts/Encoder_System.txt',
+//   'https://localhost:3002/src/prompts/Encoder_Main.txt',
+//   'https://localhost:3002/src/prompts/Followup_System.txt',
+//   'https://localhost:3002/src/prompts/Structure_System.txt',
+//   'https://localhost:3002/src/prompts/Validation_System.txt',
+//   'https://localhost:3002/src/prompts/Validation_Main.txt'
+// ];
 
-console.log(srcPaths);
+// console.log(srcPaths);
 
 // Function to load API keys from a config file
 // This allows the keys to be stored in a separate file that's .gitignored

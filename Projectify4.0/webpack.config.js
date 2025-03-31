@@ -115,12 +115,8 @@ module.exports = async (env, options) => {
             to: "assets/[name][ext][query]",
           },
           {
-            from: "assets/prompts/*",
-            to: "assets/prompts/[name][ext][query]",
-          },
-          {
-            from: "src/prompts/*",
-            to: "prompts/[name][ext][query]",
+            from: "./src/prompts/*",
+            to: "prompts/[name][ext]"
           },
           {
             from: "manifest*.xml",
