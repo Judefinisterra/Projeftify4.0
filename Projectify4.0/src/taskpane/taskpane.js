@@ -30,6 +30,10 @@ let API_KEYS = {
   PINECONE_API_KEY: ""
 };
 
+const srcPaths = `https://localhost:3002/src/prompts/Encoder_Main.txt`;
+
+console.log(srcPaths);
+
 // Function to load API keys from a config file
 // This allows the keys to be stored in a separate file that's .gitignored
 async function initializeAPIKeys() {
@@ -211,9 +215,11 @@ async function loadPromptFromFile(promptKey) {
     // Use a simplified path approach that works with dev server with correct port
     const paths = [
       `https://localhost:3002/prompts/${promptKey}.txt`,
-      `https://localhost:3002/assets/prompts/${promptKey}.txt`
     ];
     
+    // Combine all paths to try
+    paths.push(...srcPaths);
+ 
     // Try each path until one works
     let response = null;
     for (const path of paths) {
@@ -230,32 +236,13 @@ async function loadPromptFromFile(promptKey) {
     }
     
     if (!response || !response.ok) {
-      // If all paths fail, use hardcoded fallback prompts
-      console.log(`All paths failed, using fallback for: ${promptKey}`);
-      const fallbackPrompts = {
-        'Structure_System': 'You are an AI assistant specialized in analyzing user queries and breaking them down into search queries for retrieving relevant information from specialized databases. Your task is to generate multiple search queries that will help find the most relevant information for the user\'s request.\n\nWhen given a user query, create 2-5 different search queries that explore different aspects of the question. These queries should be returned as an array of strings.',
-        'Followup_System': 'You are an AI assistant helping with follow-up questions related to business analysis. Use the conversation history, training data, and context provided to generate a comprehensive and relevant response.',
-        'main': 'You are an AI assistant helping to analyze and respond to business queries. Use the relevant context and training data provided to generate helpful responses.',
-        'test-prompt': 'This is a test prompt file used to verify that the prompt loading system is working correctly.',
-        'Validation_System': 'You are a validation assistant that checks and corrects responses to business analysis queries. Your task is to carefully analyze the initial response and validation results, then provide an improved version that addresses any issues found.',
-        'Validation_Main': 'This is the main validation prompt. Your task is to validate the generated response against the following criteria.',
-        'Encoder_System': 'You are an AI assistant specialized in encoding client requests for financial modeling.',
-        'Encoder_Main': 'Convert the client request into appropriate response format.'
-      };
-      
-      const fallbackPrompt = fallbackPrompts[promptKey];
-      if (fallbackPrompt) {
-        console.log(`Using fallback prompt for: ${promptKey}`);
-        return fallbackPrompt;
-      }
-      
       throw new Error(`Failed to load prompt: ${promptKey} (Could not find file in any location)`);
     }
     
     return await response.text();
   } catch (error) {
     console.error(`Error loading prompt ${promptKey}:`, error);
-    return null;
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
 
