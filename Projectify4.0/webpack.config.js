@@ -5,8 +5,30 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const CustomFunctionsMetadataPlugin = require("custom-functions-metadata-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const path = require("path");
+const webpack = require("webpack");
+const dotenv = require('dotenv');
 
-const urlDev = "https://localhost:3000/";
+// Load environment variables from .env file
+const envResult = dotenv.config();
+let envKeys = {};
+
+if (envResult.parsed) {
+  console.log("ENV vars loaded from .env file:", Object.keys(envResult.parsed));
+  // Create an object with properly formatted environment variables
+  Object.keys(envResult.parsed).forEach(key => {
+    envKeys[`process.env.${key}`] = JSON.stringify(envResult.parsed[key]);
+  });
+} else {
+  console.warn("No .env file found or error parsing it:", envResult.error);
+}
+
+// Add process.env polyfill
+envKeys["process.env"] = JSON.stringify({});
+
+// Add debug logging to check what's being defined
+console.log("Environment variables being defined:", Object.keys(envKeys).map(k => k.replace('process.env.', '')));
+
+const urlDev = "https://localhost:3002/";
 const urlProd = "https://www.contoso.com/"; // CHANGE THIS TO YOUR PRODUCTION DEPLOYMENT LOCATION
 
 /* global require, module, process, __dirname */
@@ -31,6 +53,13 @@ module.exports = async (env, options) => {
     },
     resolve: {
       extensions: [".html", ".js"],
+      fallback: {
+        // Provide node module polyfills
+        "process": require.resolve("process/browser"),
+        "os": require.resolve("os-browserify"),
+        "path": false, // No polyfill needed
+        "fs": false // No polyfill needed
+      }
     },
     module: {
       rules: [
@@ -70,6 +99,15 @@ module.exports = async (env, options) => {
         template: "./src/taskpane/taskpane.html",
         chunks: ["polyfill", "taskpane"],
       }),
+      new HtmlWebpackPlugin({
+        filename: "commands.html",
+        template: "./src/commands/commands.html",
+        chunks: ["polyfill", "commands"],
+      }),
+      new webpack.DefinePlugin(envKeys),
+      new webpack.ProvidePlugin({
+        process: 'process/browser',
+      }),
       new CopyWebpackPlugin({
         patterns: [
           {
@@ -77,29 +115,46 @@ module.exports = async (env, options) => {
             to: "assets/[name][ext][query]",
           },
           {
+            from: "assets/prompts/*",
+            to: "assets/prompts/[name][ext][query]",
+          },
+          {
+            from: "src/prompts/*",
+            to: "prompts/[name][ext][query]",
+          },
+          {
             from: "manifest*.xml",
             to: "[name]" + "[ext]",
             transform(content) {
               if (dev) {
-                return content;
+                return content
+                  .toString()
+                  .replace(new RegExp(urlProd, "g"), urlDev);
               } else {
-                return content.toString().replace(new RegExp(urlDev + "(?:public/)?", "g"), urlProd);
+                return content
+                  .toString()
+                  .replace(new RegExp(urlDev, "g"), urlProd);
               }
             },
           },
+          {
+            from: "config.js",
+            to: "config.js",
+          },
         ],
-      }),
-      new HtmlWebpackPlugin({
-        filename: "commands.html",
-        template: "./src/commands/commands.html",
-        chunks: ["polyfill", "commands"],
       }),
     ],
     devServer: {
-      static: {
-        directory: path.join(__dirname, "dist"),
-        publicPath: "/public",
-      },
+      static: [
+        {
+          directory: path.join(__dirname, "dist"),
+          publicPath: "/"
+        },
+        {
+          directory: path.join(__dirname, "assets"),
+          publicPath: "/assets"
+        }
+      ],
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
@@ -107,7 +162,7 @@ module.exports = async (env, options) => {
         type: "https",
         options: env.WEBPACK_BUILD || options.https !== undefined ? options.https : await getHttpsOptions(),
       },
-      port: process.env.npm_package_config_dev_server_port || 3000,
+      port: process.env.npm_package_config_dev_server_port || 3002,
     },
   };
 

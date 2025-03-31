@@ -5,29 +5,81 @@
 
 /* global console, document, Excel, Office */
 
-import process from 'process/browser';
-window.process = process;
+// Remove imports from Langchain to avoid ESM module issues
+// Using direct fetch calls instead
 
-import { ChatOpenAI } from "@langchain/openai";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { OpenAIEmbeddings } from '@langchain/openai';
+// Mock fs module for browser environment
+const fs = {
+    writeFileSync: (path, content) => {
+        console.log(`Mock writeFileSync called with path: ${path}`);
+        // In browser, we'll just log the content instead of writing to file
+        console.log(`Content would be written to ${path}:`, content.substring(0, 100) + '...');
+    }
+};
 
 //*********Setup*********
 // Start the timer
 const startTime = performance.now();
 
 //Debugging Toggle
-const DEBUG = false; 
+const DEBUG = true; 
 
-// Replace dotenv with hardcoded API keys
-const OPENAI_API_KEY = window.process.env.OPENAI_API_KEY || "";
-const PINECONE_API_KEY = window.process.env.PINECONE_API_KEY || "";
-const PINECONE_ENVIRONMENT = "gcp-starter"; // Your Pinecone environment
-const PINECONE_INDEX = "codes"; // Your Pinecone index name
+// API keys storage
+let API_KEYS = {
+  OPENAI_API_KEY: "",
+  PINECONE_API_KEY: ""
+};
+
+// Function to load API keys from a config file
+// This allows the keys to be stored in a separate file that's .gitignored
+async function initializeAPIKeys() {
+  try {
+    console.log("Initializing API keys...");
+    
+    // Try to load config.js which is .gitignored
+    try {
+      const configResponse = await fetch('https://localhost:3002/config.js');
+      if (configResponse.ok) {
+        const configText = await configResponse.text();
+        // Extract keys from the config text using regex
+        const openaiKeyMatch = configText.match(/OPENAI_API_KEY\s*=\s*["']([^"']+)["']/);
+        const pineconeKeyMatch = configText.match(/PINECONE_API_KEY\s*=\s*["']([^"']+)["']/);
+        
+        if (openaiKeyMatch && openaiKeyMatch[1]) {
+          API_KEYS.OPENAI_API_KEY = openaiKeyMatch[1];
+          console.log("OpenAI API key loaded from config.js");
+        }
+        
+        if (pineconeKeyMatch && pineconeKeyMatch[1]) {
+          API_KEYS.PINECONE_API_KEY = pineconeKeyMatch[1];
+          console.log("Pinecone API key loaded from config.js");
+        }
+      }
+    } catch (error) {
+      console.warn("Could not load config.js, will use empty API keys:", error);
+    }
+    
+    // Add debug logging with secure masking of keys
+    console.log("OPENAI_API_KEY:", API_KEYS.OPENAI_API_KEY ? 
+      `${API_KEYS.OPENAI_API_KEY.substring(0, 3)}...${API_KEYS.OPENAI_API_KEY.substring(API_KEYS.OPENAI_API_KEY.length - 3)}` : 
+      "Not found");
+    console.log("PINECONE_API_KEY:", API_KEYS.PINECONE_API_KEY ? 
+      `${API_KEYS.PINECONE_API_KEY.substring(0, 3)}...${API_KEYS.PINECONE_API_KEY.substring(API_KEYS.PINECONE_API_KEY.length - 3)}` : 
+      "Not found");
+    
+    return API_KEYS.OPENAI_API_KEY && API_KEYS.PINECONE_API_KEY;
+  } catch (error) {
+    console.error("Error initializing API keys:", error);
+    return false;
+  }
+}
+
+const PINECONE_ENVIRONMENT = "gcp-starter"; 
+const PINECONE_INDEX = "codes"; 
 
 // Add Pinecone API configuration
 const PINECONE_CONFIG = {
-    apiKey: PINECONE_API_KEY,
+    apiKey: () => API_KEYS.PINECONE_API_KEY, // Use function to get current key
     environment: PINECONE_ENVIRONMENT,
     indexName: PINECONE_INDEX,
     apiEndpoint: "https://codes-zmg9zog.svc.aped-4627-b74a.pinecone.io"
@@ -76,15 +128,90 @@ function loadConversationHistory() {
     }
 }
 
+// Direct OpenAI API call function (replaces LangChain)
+async function callOpenAI(messages, model = GPT4O, temperature = 0.7) {
+  try {
+    console.log(`Calling OpenAI API with model: ${model}`);
+    
+    // Check for API key
+    if (!API_KEYS.OPENAI_API_KEY) {
+      throw new Error("OpenAI API key not found. Please check your API keys.");
+    }
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEYS.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: temperature
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error("OpenAI API error response:", errorData);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log("OpenAI API response received");
+    
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error("Error calling OpenAI API:", error);
+    throw error;
+  }
+}
+
+// OpenAI embeddings function (replaces LangChain)
+async function createEmbedding(text) {
+  try {
+    console.log("Creating embedding for text");
+    
+    // Check for API key
+    if (!API_KEYS.OPENAI_API_KEY) {
+      throw new Error("OpenAI API key not found. Please check your API keys.");
+    }
+    
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEYS.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "text-embedding-3-large",
+        input: text
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error("OpenAI Embeddings API error response:", errorData);
+      throw new Error(`OpenAI Embeddings API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log("OpenAI Embeddings API response received");
+    
+    return data.data[0].embedding;
+  } catch (error) {
+    console.error("Error creating embedding:", error);
+    throw error;
+  }
+}
+
 // Remove the PROMPTS object and add a function to load prompts
 async function loadPromptFromFile(promptKey) {
   try {
-    // Try different paths for Office Add-ins
+    // Use a simplified path approach that works with dev server with correct port
     const paths = [
-      `../prompts/${promptKey}.txt`,
-      `/prompts/${promptKey}.txt`,
-      `/src/prompts/${promptKey}.txt`,
-      `./prompts/${promptKey}.txt`
+      `https://localhost:3002/prompts/${promptKey}.txt`,
+      `https://localhost:3002/assets/prompts/${promptKey}.txt`
     ];
     
     // Try each path until one works
@@ -103,6 +230,25 @@ async function loadPromptFromFile(promptKey) {
     }
     
     if (!response || !response.ok) {
+      // If all paths fail, use hardcoded fallback prompts
+      console.log(`All paths failed, using fallback for: ${promptKey}`);
+      const fallbackPrompts = {
+        'Structure_System': 'You are an AI assistant specialized in analyzing user queries and breaking them down into search queries for retrieving relevant information from specialized databases. Your task is to generate multiple search queries that will help find the most relevant information for the user\'s request.\n\nWhen given a user query, create 2-5 different search queries that explore different aspects of the question. These queries should be returned as an array of strings.',
+        'Followup_System': 'You are an AI assistant helping with follow-up questions related to business analysis. Use the conversation history, training data, and context provided to generate a comprehensive and relevant response.',
+        'main': 'You are an AI assistant helping to analyze and respond to business queries. Use the relevant context and training data provided to generate helpful responses.',
+        'test-prompt': 'This is a test prompt file used to verify that the prompt loading system is working correctly.',
+        'Validation_System': 'You are a validation assistant that checks and corrects responses to business analysis queries. Your task is to carefully analyze the initial response and validation results, then provide an improved version that addresses any issues found.',
+        'Validation_Main': 'This is the main validation prompt. Your task is to validate the generated response against the following criteria.',
+        'Encoder_System': 'You are an AI assistant specialized in encoding client requests for financial modeling.',
+        'Encoder_Main': 'Convert the client request into appropriate response format.'
+      };
+      
+      const fallbackPrompt = fallbackPrompts[promptKey];
+      if (fallbackPrompt) {
+        console.log(`Using fallback prompt for: ${promptKey}`);
+        return fallbackPrompt;
+      }
+      
       throw new Error(`Failed to load prompt: ${promptKey} (Could not find file in any location)`);
     }
     
@@ -130,60 +276,66 @@ const getSystemPromptFromFile = async (promptKey) => {
 //************Functions************
 // Function 1: OpenAI Call with conversation history support
 async function processPrompt({ userInput, systemPrompt, model, temperature, history = [] }) {
+    console.log("API Key being used:", API_KEYS.OPENAI_API_KEY ? `${API_KEYS.OPENAI_API_KEY.substring(0, 3)}...` : "None");
+    
+    // Format messages in the way OpenAI expects
     const messages = [
-        ["system", systemPrompt]
+        { role: "system", content: systemPrompt }
     ];
     
+    // Add conversation history
     if (history.length > 0) {
         history.forEach(message => {
-            messages.push(message);
+            messages.push({ 
+                role: message[0] === "human" ? "user" : "assistant", 
+                content: message[1] 
+            });
         });
     }
     
-    messages.push(["human", userInput]);
+    // Add current user input
+    messages.push({ role: "user", content: userInput });
     
-    const prompt = ChatPromptTemplate.fromMessages(messages);
-
-    const chatModel = new ChatOpenAI({
-        modelName: model,
-        temperature: temperature,
-        openAIApiKey: OPENAI_API_KEY,
-    });
-
-    const chain = prompt.pipe(chatModel).pipe(response => {
+    try {
+        // Call OpenAI API directly
+        const responseContent = await callOpenAI(messages, model, temperature);
+        
+        // Try to parse JSON response if applicable
         try {
-            const parsed = JSON.parse(response.content);
-            if (!Array.isArray(parsed)) {
-                throw new Error('Response is not an array');
+            const parsed = JSON.parse(responseContent);
+            if (Array.isArray(parsed)) {
+                return parsed;
             }
-            return parsed;
+            return responseContent.split('\n').filter(line => line.trim());
         } catch (e) {
-            return response.content.split('\n').filter(line => line.trim());
+            // If not JSON, treat as text and split by lines
+            return responseContent.split('\n').filter(line => line.trim());
         }
-    });
-
-    return await chain.invoke();
+    } catch (error) {
+        console.error("Error in processPrompt:", error);
+        throw error;
+    }
 }
 
 // Function 3: Query Vector Database using Pinecone REST API
 async function queryVectorDB({ queryPrompt, indexName = PINECONE_INDEX, numResults = 10, similarityThreshold = null }) {
     try {
         console.log("Generating embeddings for query:", queryPrompt);
-        const embeddings = new OpenAIEmbeddings({
-            openAIApiKey: OPENAI_API_KEY,
-            modelName: "text-embedding-3-large"
-        });
-
-        const embedding = await embeddings.embedQuery(queryPrompt);
+        
+        // Generate embeddings using our direct API call
+        const embedding = await createEmbedding(queryPrompt);
         console.log("Embeddings generated successfully");
         
         const url = `${PINECONE_CONFIG.apiEndpoint}/query`;
         console.log("Making Pinecone API request to:", url);
         
+        // Get current API key using the function
+        const pineconeAPIKey = PINECONE_CONFIG.apiKey();
+        
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'api-key': PINECONE_CONFIG.apiKey,
+                'api-key': pineconeAPIKey,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -314,7 +466,7 @@ async function handleFollowUpConversation(clientprompt) {
         if (DEBUG) console.log("Processing follow-up question:", clientprompt);
         if (DEBUG) console.log("Loaded conversation history:", JSON.stringify(conversationHistory, null, 2));
         
-        const systemPrompt = await getSystemPromptFromFile('followUpSystem');
+        const systemPrompt = await getSystemPromptFromFile('Followup_System');
         const MainPrompt = await getSystemPromptFromFile('main');
         
         const trainingdataCall2 = await queryVectorDB({
@@ -424,7 +576,7 @@ async function structureDatabasequeries(clientprompt) {
 
     try {
         console.log("Getting structure system prompt");
-        const systemStructurePrompt = await getSystemPromptFromFile('structureSystem');
+        const systemStructurePrompt = await getSystemPromptFromFile('Structure_System');
         
         if (!systemStructurePrompt) {
             throw new Error("Failed to load structure system prompt");
@@ -569,8 +721,8 @@ async function validationCorrection(clientprompt, initialResponse, validationRes
         const codeDescriptions = localStorage.getItem('codeDescriptions') || "";
         const lastCallContext = localStorage.getItem('lastCallContext') || "";
         
-        const validationSystemPrompt = await getSystemPromptFromFile('validationSystem');
-        const validationMainPrompt = await getSystemPromptFromFile('validationMain');
+        const validationSystemPrompt = await getSystemPromptFromFile('Validation_System');
+        const validationMainPrompt = await getSystemPromptFromFile('Validation_Main');
         
         if (!validationSystemPrompt) {
             throw new Error("Failed to load validation system prompt");
@@ -652,14 +804,24 @@ Office.onReady(() => {
   document.getElementById("sideload-msg").style.display = "none";
   document.getElementById("app-body").style.display = "flex";
   
-  // Test file loading
-  getSystemPromptFromFile("/prompts/test-prompt.txt")
-    .then(text => {
-      console.log("Test prompt loaded:", text);
-    })
-    .catch(error => {
-      console.error("Error loading test prompt:", error);
-    });
+  // Initialize API keys before doing anything else
+  initializeAPIKeys().then(success => {
+    if (success) {
+      console.log("API keys initialized successfully");
+    } else {
+      console.error("Failed to initialize API keys");
+      showError("Failed to initialize API keys. Some features may not work correctly.");
+    }
+    
+    // Test file loading
+    getSystemPromptFromFile("test-prompt")
+      .then(text => {
+        console.log("Test prompt loaded:", text);
+      })
+      .catch(error => {
+        console.error("Error loading test prompt:", error);
+      });
+  });
   
   // Add click handler with visual feedback
   const runButton = document.getElementById("run");

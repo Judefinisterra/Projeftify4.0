@@ -1,0 +1,11 @@
+// This is an example config file - copy this to config.js and add your actual API keys
+// The config.js file should be added to .gitignore to prevent API keys from being committed
+
+// OpenAI API configuration
+const OPENAI_API_KEY = "your_openai_api_key_here";
+
+// Pinecone API configuration
+const PINECONE_API_KEY = "your_pinecone_api_key_here";
+
+// Note: This file will be used by the application to load API keys
+// Use the initializeAPIKeys function in taskpane.js to access these values 
