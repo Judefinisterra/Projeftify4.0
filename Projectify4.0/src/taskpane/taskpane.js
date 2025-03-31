@@ -533,7 +533,10 @@ async function handleInitialConversation(clientprompt) {
     if (DEBUG) console.log("Processing initial question:", clientprompt);
     
     const systemPrompt = await getSystemPromptFromFile('Encoder_System');
+    console.log("SYSTEM PROMPT: ", systemPrompt);
     const MainPrompt = await getSystemPromptFromFile('Encoder_Main');
+    console.log("MAIN PROMPT: ", MainPrompt);
+
 
     const Call2prompt = "Client request: " + clientprompt + "\n" +
                        "Main Prompt: " + MainPrompt;
@@ -785,48 +788,7 @@ function setButtonLoading(isLoading) {
     }
 }
 
-// The initialize function must be run each time a new page is loaded
-Office.onReady(() => {
-  console.log("Office.onReady called");
-  document.getElementById("sideload-msg").style.display = "none";
-  document.getElementById("app-body").style.display = "flex";
-  
-  // Initialize API keys before doing anything else
-  initializeAPIKeys().then(success => {
-    if (success) {
-      console.log("API keys initialized successfully");
-    } else {
-      console.error("Failed to initialize API keys");
-      showError("Failed to initialize API keys. Some features may not work correctly.");
-    }
-    
-    // Test file loading
-    getSystemPromptFromFile("test-prompt")
-      .then(text => {
-        console.log("Test prompt loaded:", text);
-      })
-      .catch(error => {
-        console.error("Error loading test prompt:", error);
-      });
-  });
-  
-  // Add click handler with visual feedback
-  const runButton = document.getElementById("run");
-  if (runButton) {
-    runButton.onclick = () => {
-      console.log("Run button clicked");
-      runButton.style.backgroundColor = "#0078d4"; // Visual feedback
-      setTimeout(() => {
-        runButton.style.backgroundColor = ""; // Reset color
-      }, 200);
-      run();
-    };
-    console.log("Run button click handler attached");
-  } else {
-    console.error("Run button not found in DOM");
-  }
-});
-
+// Move the run function declaration to module level
 export async function run() {
   console.log("Run function started");
   setButtonLoading(true);
@@ -918,5 +880,38 @@ export async function run() {
     setButtonLoading(false);
   }
 }
+
+// Update the Office.onReady callback to reference the run function
+Office.onReady(() => {
+  console.log("Office.onReady called");
+  document.getElementById("sideload-msg").style.display = "none";
+  document.getElementById("app-body").style.display = "flex";
+  
+  // Initialize API keys before doing anything else
+  initializeAPIKeys().then(success => {
+    if (success) {
+      console.log("API keys initialized successfully");
+    } else {
+      console.error("Failed to initialize API keys");
+      showError("Failed to initialize API keys. Some features may not work correctly.");
+    }
+
+    // Add click handler with visual feedback
+    const runButton = document.getElementById("run");
+    if (runButton) {
+      runButton.onclick = () => {
+        console.log("Run button clicked");
+        runButton.style.backgroundColor = "#0078d4"; // Visual feedback
+        setTimeout(() => {
+          runButton.style.backgroundColor = ""; // Reset color
+        }, 200);
+        run();
+      };
+      console.log("Run button click handler attached");
+    } else {
+      console.error("Run button not found in DOM");
+    }
+  });
+});
 
 
