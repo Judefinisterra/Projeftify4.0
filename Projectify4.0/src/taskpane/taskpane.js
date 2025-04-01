@@ -703,50 +703,6 @@ function saveTrainingData(clientprompt, outputArray2) {
     }
 }
 
-async function runValidation() {
-    try {
-        // Create or get a worksheet for test results
-        await Excel.run(async (context) => {
-            let sheet = context.workbook.worksheets.getItemOrNullObject("ValidationTest");
-            if (sheet.isNullObject) {
-                sheet = context.workbook.worksheets.add("ValidationTest");
-            }
-            
-            // Clear existing content
-            sheet.getRange().clear();
-            
-            // Add headers
-            let range = sheet.getRange("A1:B1");
-            range.values = [["Test Case", "Results"]];
-            range.format.font.bold = true;
-
-            // Test cases
-            const testCases = [
-                // ... your test cases from above ...
-            ];
-
-            // Run tests and write results
-            let row = 2;
-            for (let i = 0; i < testCases.length; i++) {
-                const errors = await runValidation(testCases[i]);
-                
-                sheet.getRange(`A${row}`).values = [[`Test Case ${i + 1}`]];
-                sheet.getRange(`B${row}`).values = [[
-                    errors.length > 0 ? 
-                        `Errors found:\n${errors.join('\n')}` : 
-                        "Validation Successful"
-                ]];
-                
-                row++;
-            }
-
-            await context.sync();
-        });
-    } catch (error) {
-        console.error("Error:", error);
-    }
-}
-
 async function validationCorrection(clientprompt, initialResponse, validationResults) {
     try {
         const conversationHistory = loadConversationHistory();
