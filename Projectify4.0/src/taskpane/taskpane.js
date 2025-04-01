@@ -7,7 +7,8 @@
 
 // Remove imports from Langchain to avoid ESM module issues
 // Using direct fetch calls instead
-
+// Add this test function
+import { validateCodeStrings } from './Validation.js';
 // Mock fs module for browser environment
 const fs = {
     writeFileSync: (path, content) => {
@@ -890,12 +891,10 @@ export async function run() {
         throw new Error("Failed to get valid response from conversation");
       }
 
-      // // Run validation and correction
-      // console.log("Starting validation");
-      // const validationResults = await runValidation();
-      // console.log("Validation completed:", validationResults);
-
-      const validationResults = "Validation successful - no errors found"
+      // Run validation and correction
+      console.log("Starting validation");
+      const validationResults = await validateCodeStrings(response);
+      console.log("Validation completed:", validationResults);
 
       let finalResponse;
       if (validationResults && validationResults.includes("Validation successful - no errors found")) {
@@ -959,8 +958,7 @@ Office.onReady(() => {
   });
 });
 
-// Add this test function
-import { validateCodeStrings } from './Validation.js';
+
 
 async function testValidation() {
     // Test cases
