@@ -704,22 +704,45 @@ function saveTrainingData(clientprompt, outputArray2) {
 
 async function runValidation() {
     try {
-        // Instead of running a separate script, we'll do validation in memory
-        const validationData = localStorage.getItem('promptAnalysis');
-        if (!validationData) {
-            return "No validation data available";
-        }
-        
-        // Basic validation logic
-        const data = JSON.parse(validationData);
-        if (!data.outputArray2 || !Array.isArray(data.outputArray2)) {
-            return "Invalid response format";
-        }
-        
-        return "Validation successful - no errors found";
+        // Create or get a worksheet for test results
+        await Excel.run(async (context) => {
+            let sheet = context.workbook.worksheets.getItemOrNullObject("ValidationTest");
+            if (sheet.isNullObject) {
+                sheet = context.workbook.worksheets.add("ValidationTest");
+            }
+            
+            // Clear existing content
+            sheet.getRange().clear();
+            
+            // Add headers
+            let range = sheet.getRange("A1:B1");
+            range.values = [["Test Case", "Results"]];
+            range.format.font.bold = true;
+
+            // Test cases
+            const testCases = [
+                // ... your test cases from above ...
+            ];
+
+            // Run tests and write results
+            let row = 2;
+            for (let i = 0; i < testCases.length; i++) {
+                const errors = await runValidation(testCases[i]);
+                
+                sheet.getRange(`A${row}`).values = [[`Test Case ${i + 1}`]];
+                sheet.getRange(`B${row}`).values = [[
+                    errors.length > 0 ? 
+                        `Errors found:\n${errors.join('\n')}` : 
+                        "Validation Successful"
+                ]];
+                
+                row++;
+            }
+
+            await context.sync();
+        });
     } catch (error) {
-        console.error("Error during validation:", error);
-        return "Validation failed: " + error.message;
+        console.error("Error:", error);
     }
 }
 
@@ -934,6 +957,53 @@ Office.onReady(() => {
       console.error("Run button not found in DOM");
     }
   });
+});
+
+// Add this test function
+import { validateCodeStrings } from './Validation.js';
+
+async function testValidation() {
+    // Test cases
+    const testCases = [
+        // Valid case
+        [
+            '<TAB; label1="Test Tab">',
+            '<CODE-VV; row1="123|Description">',
+            '<CODE-EV; row2="456|Another Description">'
+        ],
+        // Invalid case (missing EV/RV code)
+        [
+            '<TAB; label1="Test Tab">',
+            '<CODE-VV; row1="123|Description">'
+        ],
+        // Invalid format case
+        [
+            '<INVALID; row1="123">'
+        ]
+    ];
+
+    console.log("Starting validation tests...");
+
+    for (let i = 0; i < testCases.length; i++) {
+        console.log(`\nTest Case ${i + 1}:`);
+        console.log("Input:", testCases[i]);
+        
+        const errors = await validateCodeStrings(testCases[i]);
+        
+        if (errors && errors.length > 0) {
+            console.log("Validation Errors:");
+            errors.forEach(error => console.log(`- ${error}`));
+        } else {
+            console.log("Validation Successful - No errors");
+        }
+    }
+}
+
+// Add this to your Office.onReady handler if not already present
+Office.onReady((info) => {
+    if (info.host === Office.HostType.Excel) {
+        document.getElementById("run-test").onclick = testValidation;
+    }
 });
 
 

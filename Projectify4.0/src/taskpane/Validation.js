@@ -4,7 +4,7 @@
 // import { fileURLToPath } from 'url';
 // import { dirname } from 'path';
 
-async function validateCodeStrings(inputCodeStrings) {
+export async function validateCodeStrings(inputCodeStrings) {
     const errors = [];
     const tabLabels = new Set();
     const rowValues = new Set();
