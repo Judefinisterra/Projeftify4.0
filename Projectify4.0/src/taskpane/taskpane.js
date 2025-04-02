@@ -879,7 +879,11 @@ export async function run() {
 
             // Clean the strings (remove forward slashes)
             const cleanedStrings = codeStrings.map(str => str.replace(/\//g, ''));
-            console.log("Cleaned code strings:", cleanedStrings);
+            
+            // Add the original client input as the last item
+            cleanedStrings.push(selectedText);
+            
+            console.log("Cleaned code strings with original input:", cleanedStrings);
 
             // Write to Excel
             await writeToExcel(context, range, cleanedStrings);

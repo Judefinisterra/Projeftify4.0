@@ -61,10 +61,20 @@ export async function validateCodeStrings(inputCodeStrings) {
                 // Handle spaces before/after the pipe delimiter
                 const parts = rowContent.split('|');
                 if (parts.length > 0) {
-                    const rowId = parts[0].trim();
-                    if (rowId) {
-                        rowValues.add(rowId);
-                    }
+                    // Extract all potential row IDs including those after asterisks
+                    parts.forEach(part => {
+                        const trimmedPart = part.trim();
+                        if (trimmedPart.startsWith('*')) {
+                            // Add the ID after the asterisk
+                            const afterAsterisk = trimmedPart.substring(1).trim();
+                            if (afterAsterisk) {
+                                rowValues.add(afterAsterisk);
+                            }
+                        } else if (trimmedPart) {
+                            // Add regular IDs
+                            rowValues.add(trimmedPart);
+                        }
+                    });
                 }
             });
         }
