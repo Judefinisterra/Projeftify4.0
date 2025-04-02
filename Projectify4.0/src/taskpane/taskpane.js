@@ -790,99 +790,121 @@ function setButtonLoading(isLoading) {
     }
 }
 
-// Move the run function declaration to module level
+// Add this helper function to clean the output
+function cleanOutput(response) {
+    if (!Array.isArray(response)) {
+        return [];
+    }
+    
+    return response
+        .map(line => {
+            // Match anything between < and > including nested brackets
+            const matches = line.match(/<[^<>]*(?:<[^<>]*>[^<>]*)*>/g);
+            if (!matches) return '';
+            
+            // Remove backslashes and join matches with <BR> between them
+            return matches
+                .map(match => match.replace(/\\/g, ''))
+                .join('\n<BR>\n');
+        })
+        .filter(line => line.trim() !== ''); // Remove empty lines
+}
+
 export async function run() {
-  console.log("Run function started");
-  setButtonLoading(true);
-  try {
-    await Excel.run(async (context) => {
-      console.log("Excel.run started");
-      const range = context.workbook.getSelectedRange();
-      range.load("address");
-      range.load("values");
-      await context.sync();
-      
-      console.log("Selected range:", range.address);
-      const selectedText = range.values[0][0];
-      console.log("Selected text:", selectedText);
-      
-      if (!selectedText) {
-        throw new Error("No text selected in the range");
-      }
-      
-      // Process the text through the main function
-      console.log("Starting structureDatabasequeries");
-      const dbResults = await structureDatabasequeries(selectedText);
-      console.log("Database queries completed");
-      
-      if (!dbResults || !Array.isArray(dbResults)) {
-        console.error("Invalid database results:", dbResults);
-        throw new Error("Failed to get valid database results");
-      }
-      
-      // Format the database results into a string
-      const plainTextResults = dbResults.map(result => {
-        if (!result) {
-          console.error("Invalid result in dbResults:", result);
-          return "No results found";
-        }
-        
-        return `Query: ${result.query || 'No query'}\n` +
-               `Training Data:\n${(result.trainingData || []).join('\n')}\n` +
-               `Code Options:\n${(result.codeOptions || []).join('\n')}\n` +
-               `Code Choosing Context:\n${(result.call1Context || []).join('\n')}\n` +
-               `Code Editing Context:\n${(result.call2Context || []).join('\n')}\n` +
-               `---\n`;
-      }).join('\n');
+    console.log("Run function started");
+    setButtonLoading(true);
+    try {
+        await Excel.run(async (context) => {
+            console.log("Excel.run started");
+            const range = context.workbook.getSelectedRange();
+            range.load("address");
+            range.load("values");
+            await context.sync();
+            
+            console.log("Selected range:", range.address);
+            const selectedText = range.values[0][0];
+            console.log("Selected text:", selectedText);
+            
+            if (!selectedText) {
+                throw new Error("No text selected in the range");
+            }
+            
+            // Process the text through the main function
+            console.log("Starting structureDatabasequeries");
+            const dbResults = await structureDatabasequeries(selectedText);
+            console.log("Database queries completed");
+            
+            if (!dbResults || !Array.isArray(dbResults)) {
+                console.error("Invalid database results:", dbResults);
+                throw new Error("Failed to get valid database results");
+            }
+            
+            // Format the database results into a string
+            const plainTextResults = dbResults.map(result => {
+                if (!result) {
+                    console.error("Invalid result in dbResults:", result);
+                    return "No results found";
+                }
+                
+                return `Query: ${result.query || 'No query'}\n` +
+                       `Training Data:\n${(result.trainingData || []).join('\n')}\n` +
+                       `Code Options:\n${(result.codeOptions || []).join('\n')}\n` +
+                       `Code Choosing Context:\n${(result.call1Context || []).join('\n')}\n` +
+                       `Code Editing Context:\n${(result.call2Context || []).join('\n')}\n` +
+                       `---\n`;
+            }).join('\n');
 
-      // Create an enhanced prompt that includes the database results
-      const enhancedPrompt = `Client Request: ${selectedText}\n\nDatabase Results:\n${plainTextResults}`;
-      console.log("Enhanced prompt created");
+            // Create an enhanced prompt that includes the database results
+            const enhancedPrompt = `Client Request: ${selectedText}\n\nDatabase Results:\n${plainTextResults}`;
+            console.log("Enhanced prompt created");
 
-      // Process the conversation with the enhanced prompt
-      console.log("Starting handleConversation");
-      const response = await handleConversation(enhancedPrompt, false);
-      console.log("Conversation completed");
+            // Process the conversation with the enhanced prompt
+            console.log("Starting handleConversation");
+            const response = await handleConversation(enhancedPrompt, false);
+            console.log("Conversation completed");
 
-      if (!response || !Array.isArray(response)) {
-        console.error("Invalid response:", response);
-        throw new Error("Failed to get valid response from conversation");
-      }
+            if (!response || !Array.isArray(response)) {
+                console.error("Invalid response:", response);
+                throw new Error("Failed to get valid response from conversation");
+            }
 
-      // Run validation and correction
-      console.log("Starting validation");
-      const testresponse = [...response, "<UNITREV-VR; driver1=\"SDFSD1\">;"];
-      console.log("Test Response submitted to validation:", testresponse);
-      const validationResults = await validateCodeStrings(testresponse);
-      console.log("Validation completed:", validationResults);
+            // Run validation and correction
+            console.log("Starting validation");
+            const testresponse = [...response, "<UNITREV-VR; driver1=\"SDFSD1\">;"];
+            console.log("Test Response submitted to validation:", testresponse);
+            const validationResults = await validateCodeStrings(testresponse);
+            console.log("Validation completed:", validationResults);
 
-      let finalResponse;
-      if (!validationResults || validationResults.length === 0) {
-        finalResponse = response;
-      } else {
-        console.log("Starting validation correction");
-        finalResponse = await validationCorrection(selectedText, response, validationResults);
-        console.log("Validation correction completed");
-      }
-      
-      if (!finalResponse || !Array.isArray(finalResponse)) {
-        console.error("Invalid final response:", finalResponse);
-        throw new Error("Failed to get valid final response");
-      }
-      
-      // Write the final response back to Excel
-      console.log("Writing response to Excel");
-      range.values = [[finalResponse.join('\n')]];
-      await context.sync();
-      console.log("Response written to Excel");
-    });
-  } catch (error) {
-    console.error("Error in run function:", error);
-    console.error("Error stack:", error.stack);
-    showError(error.message);
-  } finally {
-    setButtonLoading(false);
-  }
+            let finalResponse;
+            if (!validationResults || validationResults.length === 0) {
+                finalResponse = response;
+            } else {
+                console.log("Starting validation correction");
+                finalResponse = await validationCorrection(selectedText, response, validationResults);
+                console.log("Validation correction completed");
+            }
+            
+            if (!finalResponse || !Array.isArray(finalResponse)) {
+                console.error("Invalid final response:", finalResponse);
+                throw new Error("Failed to get valid final response");
+            }
+            
+            // Clean the response to only include content within <> brackets
+            const cleanedResponse = cleanOutput(finalResponse);
+            
+            // Write the cleaned response back to Excel
+            console.log("Writing cleaned response to Excel");
+            range.values = [[cleanedResponse.join('\n')]];
+            await context.sync();
+            console.log("Response written to Excel");
+        });
+    } catch (error) {
+        console.error("Error in run function:", error);
+        console.error("Error stack:", error.stack);
+        showError(error.message);
+    } finally {
+        setButtonLoading(false);
+    }
 }
 
 // Update the Office.onReady callback to reference the run function
