@@ -322,6 +322,83 @@ async function processPrompt({ userInput, systemPrompt, model, temperature, hist
     }
 }
 
+async function structureDatabasequeries(clientprompt) {
+  if (DEBUG) console.log("Processing structured database queries:", clientprompt);
+
+  try {
+      console.log("Getting structure system prompt");
+      const systemStructurePrompt = await getSystemPromptFromFile('Structure_System');
+      
+      if (!systemStructurePrompt) {
+          throw new Error("Failed to load structure system prompt");
+      }
+
+      console.log("Got system prompt, processing query strings");
+      const queryStrings = await processPrompt({
+          userInput: clientprompt,
+          systemPrompt: systemStructurePrompt,
+          model: GPT4O,
+          temperature: 1
+      });
+
+      if (!queryStrings || !Array.isArray(queryStrings)) {
+          throw new Error("Failed to get valid query strings");
+      }
+
+      console.log("Got query strings:", queryStrings);
+      const results = [];
+
+      for (const queryString of queryStrings) {
+          console.log("Processing query:", queryString);
+          try {
+              const queryResults = {
+                  query: queryString,
+                  trainingData: await queryVectorDB({
+                      queryPrompt: queryString,
+                      similarityThreshold: .2,
+                      indexName: 'call2trainingdata',
+                      numResults: 3
+                  }),
+                  call2Context: await queryVectorDB({
+                      queryPrompt: queryString,
+                      similarityThreshold: .2,
+                      indexName: 'call2context',
+                      numResults: 5
+                  }),
+                  call1Context: await queryVectorDB({
+                      queryPrompt: queryString,
+                      similarityThreshold: .2,
+                      indexName: 'call1context',
+                      numResults: 5
+                  }),
+                  codeOptions: await queryVectorDB({
+                      queryPrompt: queryString,
+                      indexName: 'codes',
+                      numResults: 3,
+                      similarityThreshold: .1
+                  })
+              };
+
+              results.push(queryResults);
+              console.log("Successfully processed query:", queryString);
+          } catch (error) {
+              console.error(`Error processing query "${queryString}":`, error);
+              // Continue with next query instead of failing completely
+              continue;
+          }
+      }
+
+      if (results.length === 0) {
+          throw new Error("No valid results were obtained from any queries");
+      }
+
+      return results;
+  } catch (error) {
+      console.error("Error in structureDatabasequeries:", error);
+      throw error;
+  }
+}
+
 // Function 3: Query Vector Database using Pinecone REST API
 async function queryVectorDB({ queryPrompt, indexName = 'codes', numResults = 10, similarityThreshold = null }) {
     try {
@@ -582,82 +659,7 @@ async function handleInitialConversation(clientprompt) {
     return outputArray2;
 }
 
-async function structureDatabasequeries(clientprompt) {
-    if (DEBUG) console.log("Processing structured database queries:", clientprompt);
 
-    try {
-        console.log("Getting structure system prompt");
-        const systemStructurePrompt = await getSystemPromptFromFile('Structure_System');
-        
-        if (!systemStructurePrompt) {
-            throw new Error("Failed to load structure system prompt");
-        }
-
-        console.log("Got system prompt, processing query strings");
-        const queryStrings = await processPrompt({
-            userInput: clientprompt,
-            systemPrompt: systemStructurePrompt,
-            model: GPT4O,
-            temperature: 1
-        });
-
-        if (!queryStrings || !Array.isArray(queryStrings)) {
-            throw new Error("Failed to get valid query strings");
-        }
-
-        console.log("Got query strings:", queryStrings);
-        const results = [];
-
-        for (const queryString of queryStrings) {
-            console.log("Processing query:", queryString);
-            try {
-                const queryResults = {
-                    query: queryString,
-                    trainingData: await queryVectorDB({
-                        queryPrompt: queryString,
-                        similarityThreshold: .4,
-                        indexName: 'call2trainingdata',
-                        numResults: 3
-                    }),
-                    call2Context: await queryVectorDB({
-                        queryPrompt: queryString,
-                        similarityThreshold: .2,
-                        indexName: 'call2context',
-                        numResults: 5
-                    }),
-                    call1Context: await queryVectorDB({
-                        queryPrompt: queryString,
-                        similarityThreshold: .2,
-                        indexName: 'call1context',
-                        numResults: 5
-                    }),
-                    codeOptions: await queryVectorDB({
-                        queryPrompt: queryString,
-                        indexName: 'codes',
-                        numResults: 3,
-                        similarityThreshold: .1
-                    })
-                };
-
-                results.push(queryResults);
-                console.log("Successfully processed query:", queryString);
-            } catch (error) {
-                console.error(`Error processing query "${queryString}":`, error);
-                // Continue with next query instead of failing completely
-                continue;
-            }
-        }
-
-        if (results.length === 0) {
-            throw new Error("No valid results were obtained from any queries");
-        }
-
-        return results;
-    } catch (error) {
-        console.error("Error in structureDatabasequeries:", error);
-        throw error;
-    }
-}
 
 function savePromptAnalysis(clientprompt, systemPrompt, MainPrompt, validationSystemPrompt, validationMainPrompt, validationResults, call2context, call1context, trainingdataCall2, codeOptions, outputArray2) {
     try {
@@ -849,11 +851,13 @@ export async function run() {
 
       // Run validation and correction
       console.log("Starting validation");
-      const validationResults = await validateCodeStrings(response);
+      const testresponse = [...response, "<UNITREV-VR; driver1=\"SDFSD1\">;"];
+      console.log("Test Response submitted to validation:", testresponse);
+      const validationResults = await validateCodeStrings(testresponse);
       console.log("Validation completed:", validationResults);
 
       let finalResponse;
-      if (validationResults && validationResults.includes("Validation successful - no errors found")) {
+      if (!validationResults || validationResults.length === 0) {
         finalResponse = response;
       } else {
         console.log("Starting validation correction");

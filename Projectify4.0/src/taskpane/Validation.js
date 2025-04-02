@@ -10,6 +10,14 @@ export async function validateCodeStrings(inputCodeStrings) {
     const rowValues = new Set();
     const codeTypes = new Set();
     
+    // Clean up input strings by removing anything outside angle brackets
+    inputCodeStrings = inputCodeStrings.map(str => {
+        const match = str.match(/<[^>]+>/);
+        return match ? match[0] : str;
+    });
+
+    console.log("CleanedInput Code Strings:", inputCodeStrings);
+
     // Track codes by their suffixes
     const vvCodes = new Set();  // codes ending in -VV
     const vrCodes = new Set();  // codes ending in -VR
@@ -159,7 +167,6 @@ for (const codeString of inputCodeStrings) {
         if (driverMatches) {
             driverMatches.forEach(match => {
                 const driverValue = match.match(/driver\d+\s*=\s*"([^"]*)"/)[1].trim();
-                // console.log(driverValue);
                 if (!rowValues.has(driverValue)) {
                     errors.push(`Driver value "${driverValue}" not found in any row`);
                 }
@@ -167,8 +174,9 @@ for (const codeString of inputCodeStrings) {
         }
     }
 
-    return errors;
-} // <-- This is the end of the validateCodeStrings function
+    // Convert array of errors to a single string with line breaks
+    return errors.join('\n');
+}
 
 // Modified export function
 export async function runValidation(inputStrings) {
