@@ -656,7 +656,9 @@ async function handleInitialConversation(clientprompt) {
     savePromptAnalysis(clientprompt, systemPrompt, MainPrompt, [], [], [], [], outputArray2);
     saveTrainingData(clientprompt, outputArray2);
     
+    console.log("Initial Response - in the function:", outputArray2);
     return outputArray2;
+
 }
 
 
@@ -790,26 +792,6 @@ function setButtonLoading(isLoading) {
     }
 }
 
-// Add this helper function to clean the output
-function cleanOutput(response) {
-    if (!Array.isArray(response)) {
-        return [];
-    }
-    
-    return response
-        .map(line => {
-            // Match anything between < and > including nested brackets
-            const matches = line.match(/<[^<>]*(?:<[^<>]*>[^<>]*)*>/g);
-            if (!matches) return '';
-            
-            // Remove backslashes and join matches with <BR> between them
-            return matches
-                .map(match => match.replace(/\\/g, ''))
-                .join('\n<BR>\n');
-        })
-        .filter(line => line.trim() !== ''); // Remove empty lines
-}
-
 export async function run() {
     console.log("Run function started");
     setButtonLoading(true);
@@ -841,10 +823,7 @@ export async function run() {
             
             // Format the database results into a string
             const plainTextResults = dbResults.map(result => {
-                if (!result) {
-                    console.error("Invalid result in dbResults:", result);
-                    return "No results found";
-                }
+                if (!result) return "No results found";
                 
                 return `Query: ${result.query || 'No query'}\n` +
                        `Training Data:\n${(result.trainingData || []).join('\n')}\n` +
@@ -854,47 +833,57 @@ export async function run() {
                        `---\n`;
             }).join('\n');
 
-            // Create an enhanced prompt that includes the database results
             const enhancedPrompt = `Client Request: ${selectedText}\n\nDatabase Results:\n${plainTextResults}`;
             console.log("Enhanced prompt created");
+            console.log("Enhanced prompt:", enhancedPrompt);
 
-            // Process the conversation with the enhanced prompt
             console.log("Starting handleConversation");
-            const response = await handleConversation(enhancedPrompt, false);
+            let response = await handleConversation(enhancedPrompt, false);
             console.log("Conversation completed");
+            console.log("Initial Response:", response);
 
             if (!response || !Array.isArray(response)) {
                 console.error("Invalid response:", response);
                 throw new Error("Failed to get valid response from conversation");
             }
 
-            // Run validation and correction
+            // Run validation and correction if needed
             console.log("Starting validation");
-            const testresponse = [...response, "<UNITREV-VR; driver1=\"SDFSD1\">;"];
-            console.log("Test Response submitted to validation:", testresponse);
-            const validationResults = await validateCodeStrings(testresponse);
+            const validationResults = await validateCodeStrings(response);
             console.log("Validation completed:", validationResults);
 
-            let finalResponse;
-            if (!validationResults || validationResults.length === 0) {
-                finalResponse = response;
-            } else {
+            if (validationResults && validationResults.length > 0) {
                 console.log("Starting validation correction");
-                finalResponse = await validationCorrection(selectedText, response, validationResults);
+                response = await validationCorrection(selectedText, response, validationResults);
                 console.log("Validation correction completed");
             }
             
-            if (!finalResponse || !Array.isArray(finalResponse)) {
-                console.error("Invalid final response:", finalResponse);
-                throw new Error("Failed to get valid final response");
+            // Split the response into individual code strings
+            let codeStrings;
+            if (Array.isArray(response)) {
+                // Join the array elements and then split by brackets
+                const fullText = response.join(' ');
+                codeStrings = fullText.match(/<[^>]+>/g) || [];
+            } else if (typeof response === 'string') {
+                codeStrings = response.match(/<[^>]+>/g) || [];
+            } else {
+                codeStrings = [];
             }
             
-            // Clean the response to only include content within <> brackets
-            const cleanedResponse = cleanOutput(finalResponse);
+            console.log("Extracted code strings:", codeStrings);
+
+            if (codeStrings.length === 0) {
+                console.warn("No valid code strings found in response");
+                throw new Error("No valid code strings found in response");
+            }
+
+            // Clean the strings (remove forward slashes)
+            const cleanedStrings = codeStrings.map(str => str.replace(/\//g, ''));
+            console.log("Cleaned code strings:", cleanedStrings);
+
+            // Write to Excel
+            await writeToExcel(context, range, cleanedStrings);
             
-            // Write the cleaned response back to Excel
-            console.log("Writing cleaned response to Excel");
-            range.values = [[cleanedResponse.join('\n')]];
             await context.sync();
             console.log("Response written to Excel");
         });
@@ -904,6 +893,49 @@ export async function run() {
         showError(error.message);
     } finally {
         setButtonLoading(false);
+    }
+}
+
+// Add this helper function to clean the code strings
+function cleanCodeString(str) {
+    // Extract content between < and >
+    const matches = str.match(/<[^>]+>/);
+    if (!matches) return str;
+    
+    // Get the matched content and remove any forward slashes
+    return matches[0].replace(/\//g, '');
+}
+
+async function writeToExcel(context, startRange, codeStrings) {
+    try {
+        const worksheet = startRange.worksheet;
+        
+        // Load the row and column indices
+        startRange.load("rowIndex");
+        startRange.load("columnIndex");
+        await context.sync();
+        
+        const startRow = startRange.rowIndex;
+        const startCol = startRange.columnIndex;
+        
+        // Clean the code strings before writing
+        const cleanedStrings = codeStrings.map(str => cleanCodeString(str));
+        
+        // Create a range that spans all the rows we need
+        const targetRange = worksheet.getRangeByIndexes(
+            startRow,
+            startCol,
+            cleanedStrings.length,
+            1
+        );
+        
+        // Set all values at once
+        targetRange.values = cleanedStrings.map(str => [str]);
+        
+        // No need for additional context.sync() here as it will be called in the parent function
+    } catch (error) {
+        console.error("Error in writeToExcel:", error);
+        throw error;
     }
 }
 
