@@ -780,14 +780,18 @@ function showError(message) {
 
 // Add this function at the top level
 function setButtonLoading(isLoading) {
-    const runButton = document.getElementById('run');
-    if (runButton) {
+    const sendButton = document.getElementById('send');
+    const loadingAnimation = document.getElementById('loading-animation');
+    
+    if (sendButton) {
         if (isLoading) {
-            runButton.disabled = true;
-            runButton.innerHTML = '<span class="ms-Button-label">Processing...</span>';
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<span class="ms-Button-label">Processing...</span>';
+            loadingAnimation.style.display = 'flex';
         } else {
-            runButton.disabled = false;
-            runButton.innerHTML = '<span class="ms-Button-label">Run</span>';
+            sendButton.disabled = false;
+            sendButton.innerHTML = '<span class="ms-Button-label">Send</span>';
+            loadingAnimation.style.display = 'none';
         }
     }
 }
@@ -908,8 +912,20 @@ async function handleSend() {
         // Store the response for Excel writing
         lastResponse = response;
         
-        // Display the response in the response area
-        responseArea.textContent = response.join('\n');
+        // Format the response with each code string on a new line
+        let formattedResponse = '';
+        if (Array.isArray(response)) {
+            // Join the array elements and then split by brackets
+            const fullText = response.join(' ');
+            const codeStrings = fullText.match(/<[^>]+>/g) || [];
+            formattedResponse = codeStrings.join('\n');
+        } else if (typeof response === 'string') {
+            const codeStrings = response.match(/<[^>]+>/g) || [];
+            formattedResponse = codeStrings.join('\n');
+        }
+        
+        // Display the formatted response in the response area
+        responseArea.textContent = formattedResponse;
         
     } catch (error) {
         console.error("Error in handleSend:", error);
@@ -955,50 +971,7 @@ Office.onReady(() => {
             };
             console.log("Write to Excel button click handler attached");
         }
-
-        // Add click handler for test validation button
-        const testButton = document.getElementById("run-test");
-        if (testButton) {
-            testButton.onclick = testValidation;
-        }
     });
 });
-
-async function testValidation() {
-    // Test cases
-    const testCases = [
-        // Valid case
-        [
-            '<TAB; label1="Test Tab">',
-            '<CODE-VV; row1="123|Description">',
-            '<CODE-EV; row2="456|Another Description">'
-        ],
-        // Invalid case (missing EV/RV code)
-        [
-            '<TAB; label1="Test Tab">',
-            '<CODE-VV; row1="123|Description">'
-        ],
-        // Invalid format case
-        [
-            '<INVALID; row1="123">'
-        ]
-    ];
-
-    console.log("Starting validation tests...");
-
-    for (let i = 0; i < testCases.length; i++) {
-        console.log(`\nTest Case ${i + 1}:`);
-        console.log("Input:", testCases[i]);
-        
-        const errors = await validateCodeStrings(testCases[i]);
-        
-        if (errors && errors.length > 0) {
-            console.log("Validation Errors:");
-            errors.forEach(error => console.log(`- ${error}`));
-        } else {
-            console.log("Validation Successful - No errors");
-        }
-    }
-}
 
 
