@@ -877,8 +877,8 @@ export async function run() {
                 throw new Error("No valid code strings found in response");
             }
 
-            // Clean the strings (remove forward slashes)
-            const cleanedStrings = codeStrings.map(str => str.replace(/\//g, ''));
+            // Clean the strings (remove backslashes only)
+            const cleanedStrings = codeStrings.map(str => cleanCodeString(str));
             
             // Add the original client input as the last item
             cleanedStrings.push(selectedText);
@@ -906,8 +906,8 @@ function cleanCodeString(str) {
     const matches = str.match(/<[^>]+>/);
     if (!matches) return str;
     
-    // Get the matched content and remove any forward slashes
-    return matches[0].replace(/\//g, '');
+    // Get the matched content and remove any backslashes
+    return matches[0].replace(/\\/g, '');
 }
 
 async function writeToExcel(context, startRange, codeStrings) {

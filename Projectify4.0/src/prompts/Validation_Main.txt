@@ -13,3 +13,4 @@ Validation checks:
 4)	Blank columns remain unchanged. 
 5)	“F” columns must remain unchanged. Do not improvise “F” values that weren’t in the original codestring.  
 6)	All driver letters must be numbered. Ex. “row1 = "AS|Ad budget…” => “row1 = "AS1|Ad budget…”
+7)  Next include consecutive <BR> codes. Multiple <BR> codes in a row is not allowed. Remove all but one if present. 
