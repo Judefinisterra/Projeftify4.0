@@ -85,13 +85,13 @@ b {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin: 20px 0;
+    margin: 5px 0;
     width: 100%;
 }
 
 #user-input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 20px 10px 10px;
     border: 1px solid #e6f2e6;
     border-radius: 4px;
     resize: vertical;
@@ -165,4 +165,24 @@ b {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.logo-image {
+    width: 288px;
+    height: 288px;
+    object-fit: contain;
+}
+
+.logo-text {
+    color: #107c10;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
 }
