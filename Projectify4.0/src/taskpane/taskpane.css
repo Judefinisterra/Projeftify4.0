@@ -9,6 +9,7 @@
      height: 100%;
      margin: 0;
      padding: 0;
+     background-color: #f7fbf7;
  }
  
  ul {
@@ -39,6 +40,7 @@
     -webkit-flex: 1 0 0;
     flex: 1 0 0;
     padding: 10px 20px;
+    background-color: #f7fbf7;
  }
  
  .ms-welcome__main > h2 {
@@ -90,25 +92,32 @@ b {
 #user-input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid #e6f2e6;
     border-radius: 4px;
     resize: vertical;
     font-family: inherit;
     font-size: 14px;
 }
 
+#user-input:focus {
+    outline: none;
+    border-color: #107c10;
+    box-shadow: 0 0 0 2px rgba(16, 124, 16, 0.2);
+}
+
 .button-container {
     display: flex;
     gap: 10px;
-    justify-content: flex-start;
+    justify-content: center;
+    width: 100%;
 }
 
 .response-area {
     margin-top: 20px;
     padding: 15px;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e6f2e6;
     border-radius: 4px;
-    background-color: #f9f9f9;
+    background-color: #f7fbf7;
     white-space: nowrap;
     font-family: monospace;
     max-height: 300px;
@@ -119,7 +128,14 @@ b {
 }
 
 .ms-Button {
+    background-color: #e6f2e6;
+    border-color: #107c10;
+    color: #107c10;
     min-width: 100px;
+}
+
+.ms-Button:hover {
+    background-color: #d4e8d4;
 }
 
 .loading-animation {
@@ -134,14 +150,14 @@ b {
 .spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #0078d4;
+    border: 4px solid #e6f2e6;
+    border-top: 4px solid #107c10;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
 
 .loading-text {
-    color: #0078d4;
+    color: #107c10;
     font-size: 14px;
     font-weight: 500;
 }
