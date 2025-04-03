@@ -552,7 +552,7 @@ async function handleFollowUpConversation(clientprompt) {
         if (DEBUG) console.log("Loaded conversation history:", JSON.stringify(conversationHistory, null, 2));
         
         const systemPrompt = await getSystemPromptFromFile('Followup_System');
-        const MainPrompt = await getSystemPromptFromFile('main');
+        // const MainPrompt = await getSystemPromptFromFile('main');
         
         const trainingdataCall2 = await queryVectorDB({
             queryPrompt: clientprompt,
@@ -799,6 +799,9 @@ function setButtonLoading(isLoading) {
 // Add this variable to store the last response
 let lastResponse = null;
 
+// Add this variable to track if the current message is a response
+let isResponse = false;
+
 // Add this function to write to Excel
 async function writeToExcel() {
     if (!lastResponse) {
@@ -850,15 +853,47 @@ async function writeToExcel() {
     }
 }
 
-// Modify the handleSend function to store the response
+// Add this function to append messages to the chat log
+function appendMessage(content, isUser = false) {
+    const chatLog = document.getElementById('chat-log');
+    const welcomeMessage = document.getElementById('welcome-message');
+    
+    // Hide welcome message when first message is added
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isUser ? 'user-message' : 'assistant-message'}`;
+    
+    const messageContent = document.createElement('p');
+    messageContent.className = 'message-content';
+    messageContent.textContent = content;
+    
+    messageDiv.appendChild(messageContent);
+    chatLog.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Modify the handleSend function
 async function handleSend() {
     const userInput = document.getElementById('user-input').value.trim();
-    const responseArea = document.getElementById('response-area');
     
     if (!userInput) {
         showError('Please enter a request');
         return;
     }
+
+    // Check if this is a response to a previous message
+    isResponse = conversationHistory.length > 0;
+
+    // Add user message to chat
+    appendMessage(userInput, true);
+    
+    // Clear input
+    document.getElementById('user-input').value = '';
 
     setButtonLoading(true);
     try {
@@ -889,7 +924,7 @@ async function handleSend() {
         console.log("Enhanced prompt:", enhancedPrompt);
 
         console.log("Starting handleConversation");
-        let response = await handleConversation(enhancedPrompt, false);
+        let response = await handleConversation(enhancedPrompt, isResponse);
         console.log("Conversation completed");
         console.log("Initial Response:", response);
 
@@ -912,27 +947,46 @@ async function handleSend() {
         // Store the response for Excel writing
         lastResponse = response;
         
-        // Format the response with each code string on a new line
-        let formattedResponse = '';
-        if (Array.isArray(response)) {
-            // Join the array elements and then split by brackets
-            const fullText = response.join(' ');
-            const codeStrings = fullText.match(/<[^>]+>/g) || [];
-            formattedResponse = codeStrings.join('\n');
-        } else if (typeof response === 'string') {
-            const codeStrings = response.match(/<[^>]+>/g) || [];
-            formattedResponse = codeStrings.join('\n');
-        }
-        
-        // Display the formatted response in the response area
-        responseArea.textContent = formattedResponse;
+        // Add assistant message to chat
+        appendMessage(response.join('\n'));
         
     } catch (error) {
         console.error("Error in handleSend:", error);
         showError(error.message);
+        // Add error message to chat
+        appendMessage(`Error: ${error.message}`);
     } finally {
         setButtonLoading(false);
     }
+}
+
+// Add this function to reset the chat
+function resetChat() {
+    // Clear the chat log
+    const chatLog = document.getElementById('chat-log');
+    chatLog.innerHTML = '';
+    
+    // Restore welcome message
+    const welcomeMessage = document.createElement('div');
+    welcomeMessage.id = 'welcome-message';
+    welcomeMessage.className = 'welcome-message';
+    const welcomeTitle = document.createElement('h1');
+    welcomeTitle.textContent = 'What would you like to model?';
+    welcomeMessage.appendChild(welcomeTitle);
+    chatLog.appendChild(welcomeMessage);
+    
+    // Clear the conversation history
+    conversationHistory = [];
+    saveConversationHistory(conversationHistory);
+    
+    // Reset the response flag and last response
+    isResponse = false;
+    lastResponse = null;
+    
+    // Clear the input field
+    document.getElementById('user-input').value = '';
+    
+    console.log("Chat reset completed");
 }
 
 // Update the Office.onReady callback to add the Excel write button handler
@@ -970,6 +1024,18 @@ Office.onReady(() => {
                 writeToExcel();
             };
             console.log("Write to Excel button click handler attached");
+        }
+
+        // Add click handler for reset button
+        const resetButton = document.getElementById("reset-chat");
+        if (resetButton) {
+            resetButton.onclick = () => {
+                console.log("Reset button clicked");
+                resetChat();
+            };
+            console.log("Reset button click handler attached");
+        } else {
+            console.error("Reset button not found in DOM");
         }
     });
 });
