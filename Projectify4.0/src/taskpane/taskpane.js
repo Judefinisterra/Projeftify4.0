@@ -792,191 +792,177 @@ function setButtonLoading(isLoading) {
     }
 }
 
-export async function run() {
-    console.log("Run function started");
-    setButtonLoading(true);
+// Add this variable to store the last response
+let lastResponse = null;
+
+// Add this function to write to Excel
+async function writeToExcel() {
+    if (!lastResponse) {
+        showError('No response to write to Excel');
+        return;
+    }
+
     try {
         await Excel.run(async (context) => {
-            console.log("Excel.run started");
             const range = context.workbook.getSelectedRange();
-            range.load("address");
-            range.load("values");
+            range.load("rowIndex");
+            range.load("columnIndex");
             await context.sync();
             
-            console.log("Selected range:", range.address);
-            const selectedText = range.values[0][0];
-            console.log("Selected text:", selectedText);
-            
-            if (!selectedText) {
-                throw new Error("No text selected in the range");
-            }
-            
-            // Process the text through the main function
-            console.log("Starting structureDatabasequeries");
-            const dbResults = await structureDatabasequeries(selectedText);
-            console.log("Database queries completed");
-            
-            if (!dbResults || !Array.isArray(dbResults)) {
-                console.error("Invalid database results:", dbResults);
-                throw new Error("Failed to get valid database results");
-            }
-            
-            // Format the database results into a string
-            const plainTextResults = dbResults.map(result => {
-                if (!result) return "No results found";
-                
-                return `Query: ${result.query || 'No query'}\n` +
-                       `Training Data:\n${(result.trainingData || []).join('\n')}\n` +
-                       `Code Options:\n${(result.codeOptions || []).join('\n')}\n` +
-                       `Code Choosing Context:\n${(result.call1Context || []).join('\n')}\n` +
-                       `Code Editing Context:\n${(result.call2Context || []).join('\n')}\n` +
-                       `---\n`;
-            }).join('\n');
-
-            const enhancedPrompt = `Client Request: ${selectedText}\n\nDatabase Results:\n${plainTextResults}`;
-            console.log("Enhanced prompt created");
-            console.log("Enhanced prompt:", enhancedPrompt);
-
-            console.log("Starting handleConversation");
-            let response = await handleConversation(enhancedPrompt, false);
-            console.log("Conversation completed");
-            console.log("Initial Response:", response);
-
-            if (!response || !Array.isArray(response)) {
-                console.error("Invalid response:", response);
-                throw new Error("Failed to get valid response from conversation");
-            }
-
-            // Run validation and correction if needed
-            console.log("Starting validation");
-            const validationResults = await validateCodeStrings(response);
-            console.log("Validation completed:", validationResults);
-
-            if (validationResults && validationResults.length > 0) {
-                console.log("Starting validation correction");
-                response = await validationCorrection(selectedText, response, validationResults);
-                console.log("Validation correction completed");
-            }
+            const startRow = range.rowIndex;
+            const startCol = range.columnIndex;
             
             // Split the response into individual code strings
-            let codeStrings;
-            if (Array.isArray(response)) {
+            let codeStrings = [];
+            if (Array.isArray(lastResponse)) {
                 // Join the array elements and then split by brackets
-                const fullText = response.join(' ');
+                const fullText = lastResponse.join(' ');
                 codeStrings = fullText.match(/<[^>]+>/g) || [];
-            } else if (typeof response === 'string') {
-                codeStrings = response.match(/<[^>]+>/g) || [];
-            } else {
-                codeStrings = [];
+            } else if (typeof lastResponse === 'string') {
+                codeStrings = lastResponse.match(/<[^>]+>/g) || [];
             }
             
-            console.log("Extracted code strings:", codeStrings);
-
             if (codeStrings.length === 0) {
-                console.warn("No valid code strings found in response");
                 throw new Error("No valid code strings found in response");
             }
-
-            // Clean the strings (remove backslashes only)
-            const cleanedStrings = codeStrings.map(str => cleanCodeString(str));
             
-            // Add the original client input as the last item
-            cleanedStrings.push(selectedText);
+            // Create a range that spans all the rows we need
+            const targetRange = range.worksheet.getRangeByIndexes(
+                startRow,
+                startCol,
+                codeStrings.length,
+                1
+            );
             
-            console.log("Cleaned code strings with original input:", cleanedStrings);
-
-            // Write to Excel
-            await writeToExcel(context, range, cleanedStrings);
+            // Set all values at once, with each code string in its own row
+            targetRange.values = codeStrings.map(str => [str]);
             
             await context.sync();
             console.log("Response written to Excel");
         });
     } catch (error) {
-        console.error("Error in run function:", error);
-        console.error("Error stack:", error.stack);
+        console.error("Error writing to Excel:", error);
+        showError(error.message);
+    }
+}
+
+// Modify the handleSend function to store the response
+async function handleSend() {
+    const userInput = document.getElementById('user-input').value.trim();
+    const responseArea = document.getElementById('response-area');
+    
+    if (!userInput) {
+        showError('Please enter a request');
+        return;
+    }
+
+    setButtonLoading(true);
+    try {
+        // Process the text through the main function
+        console.log("Starting structureDatabasequeries");
+        const dbResults = await structureDatabasequeries(userInput);
+        console.log("Database queries completed");
+        
+        if (!dbResults || !Array.isArray(dbResults)) {
+            console.error("Invalid database results:", dbResults);
+            throw new Error("Failed to get valid database results");
+        }
+        
+        // Format the database results into a string
+        const plainTextResults = dbResults.map(result => {
+            if (!result) return "No results found";
+            
+            return `Query: ${result.query || 'No query'}\n` +
+                   `Training Data:\n${(result.trainingData || []).join('\n')}\n` +
+                   `Code Options:\n${(result.codeOptions || []).join('\n')}\n` +
+                   `Code Choosing Context:\n${(result.call1Context || []).join('\n')}\n` +
+                   `Code Editing Context:\n${(result.call2Context || []).join('\n')}\n` +
+                   `---\n`;
+        }).join('\n');
+
+        const enhancedPrompt = `Client Request: ${userInput}\n\nDatabase Results:\n${plainTextResults}`;
+        console.log("Enhanced prompt created");
+        console.log("Enhanced prompt:", enhancedPrompt);
+
+        console.log("Starting handleConversation");
+        let response = await handleConversation(enhancedPrompt, false);
+        console.log("Conversation completed");
+        console.log("Initial Response:", response);
+
+        if (!response || !Array.isArray(response)) {
+            console.error("Invalid response:", response);
+            throw new Error("Failed to get valid response from conversation");
+        }
+
+        // Run validation and correction if needed
+        console.log("Starting validation");
+        const validationResults = await validateCodeStrings(response);
+        console.log("Validation completed:", validationResults);
+
+        if (validationResults && validationResults.length > 0) {
+            console.log("Starting validation correction");
+            response = await validationCorrection(userInput, response, validationResults);
+            console.log("Validation correction completed");
+        }
+        
+        // Store the response for Excel writing
+        lastResponse = response;
+        
+        // Display the response in the response area
+        responseArea.textContent = response.join('\n');
+        
+    } catch (error) {
+        console.error("Error in handleSend:", error);
         showError(error.message);
     } finally {
         setButtonLoading(false);
     }
 }
 
-// Add this helper function to clean the code strings
-function cleanCodeString(str) {
-    // Extract content between < and >
-    const matches = str.match(/<[^>]+>/);
-    if (!matches) return str;
-    
-    // Get the matched content and remove any backslashes
-    return matches[0].replace(/\\/g, '');
-}
-
-async function writeToExcel(context, startRange, codeStrings) {
-    try {
-        const worksheet = startRange.worksheet;
-        
-        // Load the row and column indices
-        startRange.load("rowIndex");
-        startRange.load("columnIndex");
-        await context.sync();
-        
-        const startRow = startRange.rowIndex;
-        const startCol = startRange.columnIndex;
-        
-        // Clean the code strings before writing
-        const cleanedStrings = codeStrings.map(str => cleanCodeString(str));
-        
-        // Create a range that spans all the rows we need
-        const targetRange = worksheet.getRangeByIndexes(
-            startRow,
-            startCol,
-            cleanedStrings.length,
-            1
-        );
-        
-        // Set all values at once
-        targetRange.values = cleanedStrings.map(str => [str]);
-        
-        // No need for additional context.sync() here as it will be called in the parent function
-    } catch (error) {
-        console.error("Error in writeToExcel:", error);
-        throw error;
-    }
-}
-
-// Update the Office.onReady callback to reference the run function
+// Update the Office.onReady callback to add the Excel write button handler
 Office.onReady(() => {
-  console.log("Office.onReady called");
-  document.getElementById("sideload-msg").style.display = "none";
-  document.getElementById("app-body").style.display = "flex";
-  
-  // Initialize API keys before doing anything else
-  initializeAPIKeys().then(success => {
-    if (success) {
-      console.log("API keys initialized successfully");
-    } else {
-      console.error("Failed to initialize API keys");
-      showError("Failed to initialize API keys. Some features may not work correctly.");
-    }
+    console.log("Office.onReady called");
+    document.getElementById("sideload-msg").style.display = "none";
+    document.getElementById("app-body").style.display = "flex";
+    
+    // Initialize API keys before doing anything else
+    initializeAPIKeys().then(success => {
+        if (success) {
+            console.log("API keys initialized successfully");
+        } else {
+            console.error("Failed to initialize API keys");
+            showError("Failed to initialize API keys. Some features may not work correctly.");
+        }
 
-    // Add click handler with visual feedback
-    const runButton = document.getElementById("run");
-    if (runButton) {
-      runButton.onclick = () => {
-        console.log("Run button clicked");
-        runButton.style.backgroundColor = "#0078d4"; // Visual feedback
-        setTimeout(() => {
-          runButton.style.backgroundColor = ""; // Reset color
-        }, 200);
-        run();
-      };
-      console.log("Run button click handler attached");
-    } else {
-      console.error("Run button not found in DOM");
-    }
-  });
+        // Add click handler for send button
+        const sendButton = document.getElementById("send");
+        if (sendButton) {
+            sendButton.onclick = () => {
+                console.log("Send button clicked");
+                handleSend();
+            };
+            console.log("Send button click handler attached");
+        } else {
+            console.error("Send button not found in DOM");
+        }
+
+        // Add click handler for write to Excel button
+        const writeToExcelButton = document.getElementById("write-to-excel");
+        if (writeToExcelButton) {
+            writeToExcelButton.onclick = () => {
+                console.log("Write to Excel button clicked");
+                writeToExcel();
+            };
+            console.log("Write to Excel button click handler attached");
+        }
+
+        // Add click handler for test validation button
+        const testButton = document.getElementById("run-test");
+        if (testButton) {
+            testButton.onclick = testValidation;
+        }
+    });
 });
-
-
 
 async function testValidation() {
     // Test cases
@@ -1014,12 +1000,5 @@ async function testValidation() {
         }
     }
 }
-
-// Add this to your Office.onReady handler if not already present
-Office.onReady((info) => {
-    if (info.host === Office.HostType.Excel) {
-        document.getElementById("run-test").onclick = testValidation;
-    }
-});
 
 
