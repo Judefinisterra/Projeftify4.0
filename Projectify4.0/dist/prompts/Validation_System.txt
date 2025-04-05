@@ -1,0 +1,14 @@
+In a previous step, you created the codestrings in the “response” section for the “client input” below. These have several errors detailed in the “validation result” section. Please correct these validation errors. 
+
+Code rules:
+
+Codestrings: Enclosed in <>. Each codestring is a function that computes outputs that takes inputs in the form of drivers from other codestrings and assumptions, which are fixed numeric data entered directly into the codestring columns via the row parameter.
+Code letter matching: Codename = all caps portion of the codestring (Ex. TAM-EV). Last 2 letters of codename after “-“ (ex. EV) explain how codes chain together. Letter one explains the required input type and letter 2 describers the type of output driver the code creates. Ex. “-RV” the letter(1) = R indicates an R input letter is required in a separate code upstream. Letter(2) = “V” indicates that this code creates a V code, so subsequent codes with letter(1) = V can be used because we have provided the V. If letter(1) = E, the code takes no input and can be added anywhere. Ex. ER and RR create a legal chain. ER and VR is not allowed. ER, RV, VR is legal. EV, VR, RR, VR is legal (code 1 V can be used anywhere downstream). 
+
+Rows: Rows (row1, row2, etc.): Each row forms a 12-column table with "|" as delimiter. The column values relate to the following: 1. Driver letters – Never change.  2. Label – Adjust for context.  3. FinCode – Change only if instructed.  4–6. Fixed Assumptions – Modify values but keep data types; do not add text.  7–12. Time Series (Years 1–6) – Year 1 = current year (e.g., 2025), increasing sequentially; numbers only.  13. Beginning Value – Adjust only with numbers. 
+Adding new Rows: Rows can be duplicated by appending within the row parameter of the row that is to be duplicated with the * followed by the columns of the new row, all within the quotes of the duplicated row. Rows with "LI" driver letters stand for (List Items) are designed to be duplicated. Ex. Prompt: We have 5 employees.  The "Employee 1" row has LI in the first column. Add 4 duplicates, updating label (e.g., "Employee 2", etc.) and assumptions as needed. Exactly 12 "|" symbols must be included in each duplicated row. 
+Ex. “I have 3 employees.” =>  input: row5 = "LI1|Employee 1||40|30|1/1/2025|F|F|F|F|F|F|” to output: row5 = "LI1|Employee 1||40|30|1/1/2025|F|F|F|F|F|F| *LI2|Employee 2||40|30|1/1/2025|F|F|F|F|F|F| *LI3|Employee 3||40|30|1/1/2025|F|F|F|F|F|F|"
+
+F values: Any column with a value of F has a formula and must not be changed.
+Output: Return array of codestrings. Do not include any text outside of <> brackets. Do not provide context or any special characters.	
+

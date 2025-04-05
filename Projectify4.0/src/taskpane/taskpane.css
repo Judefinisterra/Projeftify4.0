@@ -1,0 +1,290 @@
+/* 
+ * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+ * See LICENSE in the project root for license information.
+ */
+
+ html,
+ body {
+     width: 100%;
+     height: 100%;
+     margin: 0;
+     padding: 0;
+     background-color: #f7fbf7;
+ }
+ 
+ ul {
+     margin: 0;
+     padding: 0;
+ }
+ 
+ .ms-welcome__header {
+    padding: 20px;
+    padding-bottom: 30px;
+    padding-top: 100px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    align-items: center;
+ }
+
+ .ms-welcome__main {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    -webkit-flex-wrap: nowrap;
+    flex-wrap: nowrap;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-flex: 1 0 0;
+    flex: 1 0 0;
+    padding: 10px 20px;
+    background-color: #f7fbf7;
+ }
+ 
+ .ms-welcome__main > h2 {
+     width: 100%;
+     text-align: center;
+ }
+ 
+ .ms-welcome__features {
+     list-style-type: none;
+     margin-top: 20px;
+ }
+ 
+ .ms-welcome__features.ms-List .ms-ListItem {
+     padding-bottom: 20px;
+     display: -webkit-flex;
+     display: flex;
+ }
+ 
+ .ms-welcome__features.ms-List .ms-ListItem > .ms-Icon {
+     margin-right: 10px;
+ }
+ 
+ .ms-welcome__action.ms-Button--hero {
+     margin-top: 30px;
+ }
+ 
+.ms-Button.ms-Button--hero .ms-Button-label {
+  color: #0078d7;
+}
+
+.ms-Button.ms-Button--hero:hover .ms-Button-label,
+.ms-Button.ms-Button--hero:focus .ms-Button-label{
+  color: #005a9e;
+  cursor: pointer;
+}
+
+b {
+    font-weight: bold;
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 5px 0;
+    width: 100%;
+}
+
+#user-input {
+    width: 100%;
+    padding: 10px 20px 10px 10px;
+    border: 1px solid #e6f2e6;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+#user-input:focus {
+    outline: none;
+    border-color: #107c10;
+    box-shadow: 0 0 0 2px rgba(16, 124, 16, 0.2);
+}
+
+.button-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.button-container button {
+    flex: 1;
+    min-width: 0;
+}
+
+.response-area {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #e6f2e6;
+    border-radius: 4px;
+    background-color: #f7fbf7;
+    white-space: nowrap;
+    font-family: monospace;
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
+}
+
+.ms-Button {
+    background-color: #e6f2e6;
+    border-color: #107c10;
+    color: #107c10;
+    min-width: 100px;
+}
+
+.ms-Button:hover {
+    background-color: #d4e8d4;
+}
+
+.loading-animation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 10px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e6f2e6;
+    border-top: 4px solid #107c10;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: #107c10;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.logo-image {
+    width: 288px;
+    height: 288px;
+    object-fit: contain;
+}
+
+.logo-text {
+    color: #107c10;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    gap: 12px;
+}
+
+.chat-log:not(:empty) .welcome-message {
+    display: none;
+}
+
+.chat-message {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 4px;
+    max-width: 100%;
+    margin: 4px 0;
+}
+
+.user-message {
+    background-color: #f7fbf7;
+    border: 1px solid #e6f2e6;
+    align-self: flex-end;
+}
+
+.assistant-message {
+    background-color: #ffffff;
+    border: 1px solid #e6f2e6;
+    align-self: flex-start;
+}
+
+.message-content {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.chat-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 5px 0;
+    width: 100%;
+    position: sticky;
+    bottom: 0;
+    background-color: #f7fbf7;
+    padding: 10px;
+    border-top: 1px solid #e6f2e6;
+}
+
+.welcome-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 20px;
+}
+
+.welcome-message h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Test Results Styling */
+.test-results {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.test-results h3 {
+    color: #0078d7;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e6f2e6;
+    padding-bottom: 10px;
+}
+
+.test-results pre {
+    background-color: #f7fbf7;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-x: auto;
+}
