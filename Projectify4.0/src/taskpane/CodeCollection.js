@@ -147,13 +147,13 @@ export async function runCodes(codeCollection) {
                             }
                             console.log("existingSheet deleted");
                             
-                            // Get the Codes worksheet
-                            const codesWS = context.workbook.worksheets.getItem("Codes");
-                            console.log("codesWS", codesWS);
+                            // Get the Calcs worksheet
+                            const calcsWS = context.workbook.worksheets.getItem("Calcs");
+                            console.log("calcsWS", calcsWS);
                             
-                            // Create a new worksheet by copying the Codes worksheet
-                            const newSheet = codesWS.copy();
-                            console.log("newSheet created by copying Codes worksheet");
+                            // Create a new worksheet by copying the Calcs worksheet
+                            const newSheet = calcsWS.copy();
+                            console.log("newSheet created by copying Calcs worksheet");
                             
                             // Rename it
                             newSheet.name = tabName;
@@ -162,6 +162,17 @@ export async function runCodes(codeCollection) {
                             // Set the first row
                             const firstRow = 9; // Equivalent to calcsfirstrow in VBA
                             console.log("firstRow", firstRow);
+                            
+                            // Clear all cells including and below the first row
+                            const usedRange = newSheet.getUsedRange();
+                            usedRange.load("rowCount");
+                            await context.sync();
+                            
+                            if (usedRange.rowCount >= firstRow) {
+                                const clearRange = newSheet.getRange(`${firstRow}:${usedRange.rowCount}`);
+                                clearRange.clear();
+                                console.log(`Cleared all cells from row ${firstRow} to ${usedRange.rowCount}`);
+                            }
                             
                             // Add to assumption tabs collection
                             assumptionTabs.push({
