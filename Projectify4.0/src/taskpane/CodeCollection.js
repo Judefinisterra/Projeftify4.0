@@ -107,7 +107,7 @@ export async function runCodes(codeCollection) {
         };
         
         // Initialize state variables (similar to VBA variables)
-        let calcsWS = null;
+        let currentWorksheetName = null;
         const assumptionTabs = [];
         
         // Process each code in the collection
@@ -148,11 +148,11 @@ export async function runCodes(codeCollection) {
                             console.log("existingSheet deleted");
                             
                             // Get the Calcs worksheet
-                            const calcsWS = context.workbook.worksheets.getItem("Calcs");
-                            console.log("calcsWS", calcsWS);
+                            const sourceCalcsWS = context.workbook.worksheets.getItem("Calcs");
+                            console.log("sourceCalcsWS", sourceCalcsWS);
                             
                             // Create a new worksheet by copying the Calcs worksheet
-                            const newSheet = calcsWS.copy();
+                            const newSheet = sourceCalcsWS.copy();
                             console.log("newSheet created by copying Calcs worksheet");
                             
                             // Rename it
@@ -180,8 +180,8 @@ export async function runCodes(codeCollection) {
                                 worksheet: newSheet
                             });
                             
-                            // Set the current worksheet
-                            calcsWS = tabName;
+                            // Set the current worksheet name
+                            currentWorksheetName = tabName;
                             
                             await context.sync();
                             
@@ -203,70 +203,106 @@ export async function runCodes(codeCollection) {
                     continue;
                 }
                 
-                // COMMENTED OUT: Handle other code types
-                /*
-                await Excel.run(async (context) => {
-                    // Get the Codes worksheet
-                    const codesWS = context.workbook.worksheets.getItem("Codes");
-                    
-                    // Find the code in the Codes worksheet
-                    const codeRange = codesWS.getRange("D:D");
-                    codeRange.load("values");
-                    
-                    await context.sync();
-                    
-                    // Find the first and last row with the code
-                    let firstRow = -1;
-                    let lastRow = -1;
-                    
-                    for (let row = 0; row < codeRange.values.length; row++) {
-                        if (codeRange.values[row][0] === codeType) {
-                            if (firstRow === -1) {
-                                firstRow = row + 1; // Excel rows are 1-indexed
-                            }
-                            lastRow = row + 1;
-                        }
-                    }
-                    
-                    if (firstRow === -1 || lastRow === -1) {
-                        throw new Error(`Code type ${codeType} not found in Codes worksheet`);
-                    }
-                    
-                    // Get the current worksheet
-                    const currentWS = context.workbook.worksheets.getItem(calcsWS);
-                    
-                    // Get the last row in the current worksheet
-                    const lastUsedRow = currentWS.getUsedRange().getLastRow();
-                    const pasteRow = lastUsedRow.rowIndex + 1;
-                    
-                    // Copy the range from Codes to the current worksheet
-                    const copyRange = codesWS.getRange(`A${firstRow}:CX${lastRow}`);
-                    copyRange.copy();
-                    
-                    // Paste to the current worksheet
-                    const pasteRange = currentWS.getRange(`A${pasteRow}`);
-                    pasteRange.paste();
-                    
-                    await context.sync();
-                    
-                    // Process driver and assumption inputs
-                    await processDriverAndAssumptionInputs(currentWS, pasteRow, i, codeCollection[i]);
-                    
-                    result.processedCodes++;
-                }).catch(error => {
-                    console.error(`Error processing code ${codeType}: ${error.message}`);
-                    result.errors.push({
-                        codeIndex: i,
-                        codeType: codeType,
-                        error: error.message
-                    });
-                });
-                */
-                
-                // For non-TAB codes, just increment the counter for now
+                // Handle non-TAB codes
                 if (codeType !== "TAB") {
-                    console.log(`Skipping code type: ${codeType}`);
-                    result.processedCodes++;
+                    await Excel.run(async (context) => {
+                        try {
+                            // Get the Codes worksheet
+                            const codesWS = context.workbook.worksheets.getItem("Codes");
+                            console.log("Got Codes worksheet");
+                            
+                            // Get the used range of the Codes worksheet
+                            const usedRange = codesWS.getUsedRange();
+                            usedRange.load("rowCount");
+                            usedRange.load("columnCount");
+                            await context.sync();
+                            console.log(`Used range: ${usedRange.rowCount} rows x ${usedRange.columnCount} columns`);
+                            
+                            // Get the current worksheet
+                            const currentWS = context.workbook.worksheets.getItem(currentWorksheetName);
+                            console.log("Got current worksheet:", currentWorksheetName);
+                            
+                            // Get the last row in the current worksheet
+                            const lastUsedRow = currentWS.getUsedRange().getLastRow();
+                            lastUsedRow.load("rowIndex");
+                            await context.sync();
+                            const pasteRow = lastUsedRow.rowIndex + 1;
+                            console.log("Paste row:", pasteRow);
+                            
+                            // Search for the code type in column D (index 3)
+                            let firstRow = -1;
+                            let lastRow = -1;
+                            
+                            // Load the values of column D
+                            const columnD = codesWS.getRange(`D1:D${usedRange.rowCount}`);
+                            columnD.load("values");
+                            await context.sync();
+                            
+                            console.log("Loaded column D values");
+                            
+                            // Check if values are loaded properly
+                            if (!columnD.values) {
+                                console.error("columnD.values is null or undefined");
+                                throw new Error(`Failed to load values from column D in Codes worksheet`);
+                            }
+                            
+                            console.log(`columnD.values length: ${columnD.values.length}`);
+                            
+                            // Debug print the first few values in column D
+                            console.log("First 10 values in column D:");
+                            for (let i = 0; i < Math.min(10, columnD.values.length); i++) {
+                                console.log(`Row ${i+1}: ${columnD.values[i][0]}`);
+                            }
+                            
+                            // Find the first and last row with the code
+                            for (let row = 0; row < columnD.values.length; row++) {
+                                if (columnD.values[row][0] === codeType) {
+                                    if (firstRow === -1) {
+                                        firstRow = row + 1; // Excel rows are 1-indexed
+                                    }
+                                    lastRow = row + 1;
+                                }
+                            }
+                            
+                            if (firstRow === -1 || lastRow === -1) {
+                                throw new Error(`Code type ${codeType} not found in Codes worksheet`);
+                            }
+                            
+                            console.log(`Found code type ${codeType} in rows ${firstRow} to ${lastRow}`);
+                            
+                            // Try the suggested approach to copy the range with all properties
+                            await Excel.run(async (context) => {
+                                // Get the source range
+                                const sourceRange = context.workbook.worksheets.getItem("Codes").getRange(`A${firstRow}:CX${lastRow}`);
+                                
+                                // Get the destination range
+                                const destinationRange = context.workbook.worksheets.getItem(currentWorksheetName).getRange(`A${pasteRow}`);
+                                
+                                // Copy the range with all properties
+                                destinationRange.copyFrom(sourceRange, Excel.RangeCopyType.all);
+                                
+                                await context.sync();
+                            });
+                            
+                            await context.sync();
+                            
+                            // Process driver and assumption inputs
+                            await processDriverAndAssumptionInputs(currentWS, pasteRow, i, codeCollection[i]);
+                            
+                            result.processedCodes++;
+                            console.log(`Processed code type: ${codeType}`);
+                        } catch (error) {
+                            console.error(`Error processing code ${codeType}:`, error);
+                            throw error;
+                        }
+                    }).catch(error => {
+                        console.error(`Error processing code ${codeType}: ${error.message}`);
+                        result.errors.push({
+                            codeIndex: i,
+                            codeType: codeType,
+                            error: error.message
+                        });
+                    });
                 }
             } catch (error) {
                 console.error(`Error processing code ${i}:`, error);

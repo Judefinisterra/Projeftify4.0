@@ -1051,12 +1051,12 @@ async function testCodeCollection() {
         const sampleInput = `<MODEL; beginningmonth="Jan 2025"; timeseries="Monthly">
 <TAB; label1="Working Capital">
 <BR>
-<SUB-EV; row1 = "AS1|# of Grapefruits Sold|||||100|500|500|500|500|500|";>
+<TAM-EV; row1 = "AS1|# of Grapefruits Sold|||||100|500|500|500|500|500|";>
 <UNITREV-VR; driver1="AS1"; row1 = "|Revenue|||||||||||"; row2 = "LRA1|Grapefruits|||||F|F|F|F|F|F|";>
 <UNITEXP-VR; driver1="AS1"; row1 = "|Expenses|||||||||||"; row2 = "LX1|COGS|||||10|10|10|10|10|10|">
 <TAB; label1="Tab 2">
 <BR>
-<SUB-EV; row1 = "AS1|# of Grapefruits Sold|||||100|500|500|500|500|500|";>
+<TAM-EV; row1 = "AS1|# of Grapefruits Sold|||||100|500|500|500|500|500|";>
 <UNITREV-VR; driver1="AS1"; row1 = "|Revenue|||||||||||"; row2 = "LRA1|Grapefruits|||||F|F|F|F|F|F|";>
 <UNITEXP-VR; driver1="AS1"; row1 = "|Expenses|||||||||||"; row2 = "LX1|COGS|||||10|10|10|10|10|10|"> 
 
